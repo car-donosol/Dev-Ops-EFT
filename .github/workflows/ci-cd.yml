@@ -1,0 +1,140 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and test back-Despachos
+        run: |
+          chmod +x back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO/mvnw
+          ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO/mvnw clean package
+        working-directory: .
+
+      - name: Build and test back-Ventas
+        run: |
+          chmod +x back-Ventas_SpringBoot/Springboot-API-REST/mvnw
+          ./back-Ventas_SpringBoot/Springboot-API-REST/mvnw clean package
+        working-directory: .
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: npm
+          cache-dependency-path: front_despacho/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: front_despacho
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: front_despacho
+
+  build-and-push:
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+            image: backend-despachos
+          - context: ./back-Ventas_SpringBoot/Springboot-API-REST
+            image: backend-ventas
+          - context: ./front_despacho
+            image: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.image }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - host: ${{ secrets.EC2_FRONTEND_HOST }}
+            image: frontend
+            port: 80
+            name: frontend
+          - host: ${{ secrets.EC2_DESPACHOS_HOST }}
+            image: backend-despachos
+            port: 8081
+            name: despachos
+          - host: ${{ secrets.EC2_VENTAS_HOST }}
+            image: backend-ventas
+            port: 8080
+            name: ventas
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ matrix.host }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Login to GHCR
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
+            # Stop and remove old container
+            docker stop ${{ matrix.name }} 2>/dev/null || true
+            docker rm ${{ matrix.name }} 2>/dev/null || true
+
+            # Pull latest image
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:latest
+
+            # Run new container
+            docker run -d \
+              --name ${{ matrix.name }} \
+              --restart unless-stopped \
+              -p ${{ matrix.port }}:${{ matrix.port }} \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.image }}:latest

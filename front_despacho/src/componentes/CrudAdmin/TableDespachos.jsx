@@ -7,17 +7,18 @@ export const TableDespachos = () => {
   const [despachos, setDespachos] = useState([]);
 
   const despacho = async () => {
-    await axios
-      .get("http://192.168.3.20/api/v1/despachos", {
+    try {
+      const response = await axios.get(`${import.meta.env.VITE_API_DESPACHOS_URL}`, {
         headers:{
               'Content-Type': 'application/json',
               'Accept': 'application/json'
         }
-      })
-      .then((response) => {
-        console.log(response.data);
-        setDespachos(response.data);
       });
+      console.log("Despachos:", response.data);
+      setDespachos(response.data);
+    } catch (error) {
+      console.error("Error al obtener despachos:", error.message);
+    }
   };
   // Llamada a la función para obtener los datos cuando el componente se monta
   useEffect(() => {
@@ -68,7 +69,7 @@ export const TableDespachos = () => {
                       {despacho.patenteCamion}
                     </td>
                     <td className="pr-10 py-10  items-center">
-                      {despacho.entregado
+                      {despacho.despachado
                         ? "Despacho entregado"
                         : "Despacho pendiente"}
                     </td>

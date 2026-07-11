@@ -1,0 +1,9 @@
+.git
+.gitignore
+.opencode
+docker-compose.yml
+docker-compose.override.yml
+mysql/
+*.md
+.DS_Store
+Thumbs.db
