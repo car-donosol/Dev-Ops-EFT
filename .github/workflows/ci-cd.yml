@@ -24,11 +24,11 @@ jobs:
           cache: maven
 
       - name: Build back-Despachos
-        run: ./mvnw clean package -DskipTests
+        run: chmod +x mvnw && ./mvnw clean package -DskipTests
         working-directory: back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
 
       - name: Build back-Ventas
-        run: ./mvnw clean package -DskipTests
+        run: chmod +x mvnw && ./mvnw clean package -DskipTests
         working-directory: back-Ventas_SpringBoot/Springboot-API-REST
 
       - name: Setup Node.js
