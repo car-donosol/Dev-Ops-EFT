@@ -25,15 +25,15 @@ jobs:
 
       - name: Build and test back-Despachos
         run: |
-          chmod +x back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO/mvnw
-          ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO/mvnw clean package
-        working-directory: .
+          chmod +x mvnw
+          ./mvnw clean package
+        working-directory: back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
 
       - name: Build and test back-Ventas
         run: |
-          chmod +x back-Ventas_SpringBoot/Springboot-API-REST/mvnw
-          ./back-Ventas_SpringBoot/Springboot-API-REST/mvnw clean package
-        working-directory: .
+          chmod +x mvnw
+          ./mvnw clean package
+        working-directory: back-Ventas_SpringBoot/Springboot-API-REST
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
