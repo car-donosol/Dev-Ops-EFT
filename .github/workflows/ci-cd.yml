@@ -100,24 +100,39 @@ jobs:
     strategy:
       matrix:
         include:
-          - instance-id: ${{ secrets.EC2_FRONTEND_INSTANCE_ID }}
+          - instance-id: EC2_FRONTEND
             image: frontend
             port: 80
             name: frontend
-            env-flags: >-
-              -e BACKEND_VENTAS_URL=http://${{ secrets.BACKEND_VENTAS_PRIVATE_IP }}:8080
-              -e BACKEND_DESPACHOS_URL=http://${{ secrets.BACKEND_DESPACHOS_PRIVATE_IP }}:8081
-          - instance-id: ${{ secrets.EC2_DESPACHOS_INSTANCE_ID }}
+            needs-env: frontend
+          - instance-id: EC2_DESPACHOS
             image: backend-despachos
             port: 8081
             name: despachos
-            env-flags: ""
-          - instance-id: ${{ secrets.EC2_VENTAS_INSTANCE_ID }}
+            needs-env: backend
+          - instance-id: EC2_VENTAS
             image: backend-ventas
             port: 8080
             name: ventas
-            env-flags: ""
+            needs-env: backend
     steps:
+      - name: Resolve instance ID
+        id: resolve
+        run: |
+          case "${{ matrix.needs-env }}" in
+            frontend)
+              echo "instance_id=${{ secrets.EC2_FRONTEND_INSTANCE_ID }}" >> $GITHUB_OUTPUT
+              ;;
+            EC2_DESPACHOS|backend)
+              echo "instance_id=${{ secrets.EC2_DESPACHOS_INSTANCE_ID }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+          case "${{ matrix.name }}" in
+            ventas)
+              echo "instance_id=${{ secrets.EC2_VENTAS_INSTANCE_ID }}" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -131,7 +146,7 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ secrets.AWS_REGION }}
-          instance_id: ${{ matrix.instance-id }}
+          instance_id: ${{ steps.resolve.outputs.instance_id }}
           script: |
             ECR_URI=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
@@ -148,10 +163,16 @@ jobs:
             # Pull latest image
             docker pull $ECR_URI/${{ matrix.image }}:latest
 
+            # Build env flags based on service type
+            ENV_FLAGS=""
+            if [ "${{ matrix.name }}" = "frontend" ]; then
+              ENV_FLAGS="-e BACKEND_VENTAS_URL=http://${{ secrets.BACKEND_VENTAS_PRIVATE_IP }}:8080 -e BACKEND_DESPACHOS_URL=http://${{ secrets.BACKEND_DESPACHOS_PRIVATE_IP }}:8081"
+            fi
+
             # Run new container
             docker run -d \
               --name ${{ matrix.name }} \
               --restart unless-stopped \
               -p ${{ matrix.port }}:${{ matrix.port }} \
-              ${{ matrix.env-flags }} \
+              $ENV_FLAGS \
               $ECR_URI/${{ matrix.image }}:latest
