@@ -141,22 +141,28 @@ jobs:
           DESPACHOS_IP: ${{ secrets.BACKEND_DESPACHOS_PRIVATE_IP }}
           INSTANCE_ID: ${{ steps.resolve.outputs.instance_id }}
         run: |
-          SCRIPT="#!/bin/bash
-          aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ECR_URI
-          docker stop $NAME 2>/dev/null || true
-          docker rm $NAME 2>/dev/null || true
-          docker pull $ECR_URI/$IMAGE:latest"
+          SCRIPT="#!/bin/bash"
+          SCRIPT="$SCRIPT
+          aws ecr get-login-password --region $REGION | sudo docker login --username AWS --password-stdin $ECR_URI"
+          SCRIPT="$SCRIPT
+          sudo docker stop $NAME 2>/dev/null || true"
+          SCRIPT="$SCRIPT
+          sudo docker rm $NAME 2>/dev/null || true"
+          SCRIPT="$SCRIPT
+          sudo docker pull $ECR_URI/$IMAGE:latest"
 
           if [ "$NAME" = "frontend" ]; then
             SCRIPT="$SCRIPT
-          docker run -d --name $NAME --restart unless-stopped -p $PORT:$PORT -e BACKEND_VENTAS_URL=http://$VENTAS_IP:8080 -e BACKEND_DESPACHOS_URL=http://$DESPACHOS_IP:8081 $ECR_URI/$IMAGE:latest"
+          sudo docker run -d --name $NAME --restart unless-stopped -p $PORT:$PORT -e BACKEND_VENTAS_URL=http://$VENTAS_IP:8080 -e BACKEND_DESPACHOS_URL=http://$DESPACHOS_IP:8081 $ECR_URI/$IMAGE:latest"
           else
             SCRIPT="$SCRIPT
-          docker run -d --name $NAME --restart unless-stopped -p $PORT:$PORT $ECR_URI/$IMAGE:latest"
+          sudo docker run -d --name $NAME --restart unless-stopped -p $PORT:$PORT $ECR_URI/$IMAGE:latest"
           fi
+
+          SCRIPT_JSON=$(echo "$SCRIPT" | python3 -c 'import json,sys; print(json.dumps([sys.stdin.read()]))')
 
           aws ssm send-command \
             --instance-ids "$INSTANCE_ID" \
             --document-name "AWS-RunShellScript" \
-            --parameters "commands=[$(echo "$SCRIPT" | jq -Rs .)]" \
+            --parameters "commands=$SCRIPT_JSON" \
             --region "$REGION"

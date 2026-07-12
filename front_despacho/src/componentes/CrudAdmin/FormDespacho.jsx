@@ -57,7 +57,7 @@ export const FormDespacho = ({ venta, onClose }) => {
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col justify-center text-center px-24 text-xl"
       >
-        <div className="mx-auto text-3xl font-bold mb-10 text-teal-600">
+        <div className="mx-auto text-3xl font-bold mb-10 text-sky-500">
           Ingreso de orden de despacho
         </div>
         <div className="mb-5">
@@ -109,7 +109,7 @@ export const FormDespacho = ({ venta, onClose }) => {
         </div>
 
         <button
-          className="py-6 px-14 rounded-lg bg-teal-600 text-white font-bold mb-14"
+          className="py-6 px-14 rounded-lg bg-sky-500 text-white font-bold mb-14"
           type="submit"
         >
           Asignar despacho
