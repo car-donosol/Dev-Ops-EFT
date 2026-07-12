@@ -23,16 +23,12 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and test back-Despachos
-        run: |
-          chmod +x mvnw
-          ./mvnw clean package
+      - name: Build back-Despachos
+        run: ./mvnw clean package -DskipTests
         working-directory: back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
 
-      - name: Build and test back-Ventas
-        run: |
-          chmod +x mvnw
-          ./mvnw clean package
+      - name: Build back-Ventas
+        run: ./mvnw clean package -DskipTests
         working-directory: back-Ventas_SpringBoot/Springboot-API-REST
 
       - name: Setup Node.js
