@@ -111,22 +111,12 @@ jobs:
             image: backend-despachos
             port: 8081
             name: despachos
-            env-flags: >-
-              -e DB_ENDPOINT=${{ secrets.DB_ENDPOINT }}
-              -e DB_PORT=3306
-              -e DB_NAME=despachos_db
-              -e DB_USERNAME=${{ secrets.DB_USERNAME }}
-              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            env-flags: ""
           - instance-id: ${{ secrets.EC2_VENTAS_INSTANCE_ID }}
             image: backend-ventas
             port: 8080
             name: ventas
-            env-flags: >-
-              -e DB_ENDPOINT=${{ secrets.DB_ENDPOINT }}
-              -e DB_PORT=3306
-              -e DB_NAME=ventas_db
-              -e DB_USERNAME=${{ secrets.DB_USERNAME }}
-              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            env-flags: ""
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
